@@ -1,3 +1,136 @@
+/**
+ * 1. 浏览器跨域兼容性处理 (解决 Vercel 静态部署后的 Supabase 跨域问题)
+ * 在 Supabase 初始化之前执行，拦截并处理 fetch 请求
+ */
+(function() {
+    const originalFetch = window.fetch;
+    window.fetch = function(...args) {
+        if (args[0] && typeof args[0] === 'string' && args[0].includes('supabase.co')) {
+            args[1] = args[1] || {};
+            args[1].headers = args[1].headers || {};
+            // 强制使用 CORS 模式并包含凭据
+            args[1].mode = 'cors';
+            args[1].credentials = 'include';
+        }
+        return originalFetch.apply(this, args);
+    };
+})();
+
+/**
+ * 2. Supabase 初始化配置
+ * 适配纯 HTML 静态项目，直接在全局作用域初始化
+ */
+const SUPABASE_URL = 'https://kftyfmxfsbvkiemrnybc.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_x8h_9trXzHuWeVcgG_47-Q_LXbGqpZQ';
+
+// 创建全局 supabase 客户端
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+/**
+ * 3. Supabase 数据库操作封装
+ * 从 supabase-client.js 整合并优化
+ */
+
+// --- 认证相关 ---
+async function signUp(email, password) {
+    const { data, error } = await supabaseClient.auth.signUp({ email, password });
+    if (error) throw error;
+    return data;
+}
+
+async function signIn(email, password) {
+    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    if (error) throw error;
+    return data;
+}
+
+async function signOut() {
+    const { error } = await supabaseClient.auth.signOut();
+    if (error) throw error;
+}
+
+function getCurrentUser() {
+    return supabaseClient.auth.getUser();
+}
+
+function onAuthStateChange(callback) {
+    return supabaseClient.auth.onAuthStateChange(callback);
+}
+
+// --- 数据库相关 ---
+async function fetchUserProfile(userId) {
+    const { data, error } = await supabaseClient.from('profiles').select('*').eq('id', userId).single();
+    if (error && error.code !== 'PGRST116') {
+        console.error('获取身材配置失败:', error);
+        return null;
+    }
+    return data;
+}
+
+async function upsertUserProfile(profile) {
+    const { data, error } = await supabaseClient.from('profiles').upsert(profile).select();
+    if (error) {
+        console.error('保存身材配置失败:', error);
+        throw error;
+    }
+    return data;
+}
+
+async function fetchUserClothes(userId) {
+    const { data, error } = await supabaseClient.from('clothes').select('*').eq('user_id', userId);
+    if (error) {
+        console.error('获取衣橱数据失败:', error);
+        return [];
+    }
+    return data;
+}
+
+async function insertClothes(clothesItem) {
+    const { data, error } = await supabaseClient.from('clothes').insert([clothesItem]).select();
+    if (error) {
+        console.error('添加衣物失败:', error);
+        throw error;
+    }
+    return data[0];
+}
+
+async function deleteClothesFromSupabase(clothesId) {
+    const { error } = await supabaseClient.from('clothes').delete().eq('id', clothesId);
+    if (error) {
+        console.error('删除衣物失败:', error);
+        throw error;
+    }
+}
+
+async function fetchUserOutfits(userId) {
+    const { data, error } = await supabaseClient.from('outfits').select('*').eq('user_id', userId);
+    if (error) {
+        console.error('获取搭配方案失败:', error);
+        return [];
+    }
+    return data;
+}
+
+async function insertOutfit(outfit) {
+    const { data, error } = await supabaseClient.from('outfits').insert([outfit]).select();
+    if (error) {
+        console.error('保存搭配方案失败:', error);
+        throw error;
+    }
+    return data[0];
+}
+
+async function deleteOutfitRow(outfitId) {
+    const { error } = await supabaseClient.from('outfits').delete().eq('id', outfitId);
+    if (error) {
+        console.error('删除搭配方案失败:', error);
+        throw error;
+    }
+}
+
+/**
+ * 4. 原有 script.js 逻辑开始
+ */
 // 全局变量
 let userProfile = {
     height: 170,
