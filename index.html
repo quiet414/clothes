@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的衣橱 - 智能搭配助手</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Three.js 3D引擎 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- OrbitControls for 3D交互 -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- 顶部导航 -->
+        <header class="app-header">
+            <h1>我的衣橱</h1>
+            <div class="header-actions">
+                <button class="btn-primary" onclick="showProfile()">我的身材</button>
+                <button class="btn-secondary" onclick="showWardrobe()">我的衣服</button>
+                <button class="btn-accent" onclick="showOutfits()">搭配方案</button>
+                <button class="btn-recommend" onclick="showRecommendations()">🌟 穿搭推荐</button>
+                <button class="btn-weather" onclick="showTodayOutfit()">🌤️ 今日穿搭</button>
+                <button class="btn-calendar" onclick="showOutfitCalendar()">📅 穿搭日历</button>
+                <button class="btn-profile" onclick="showPersonalCenter()">👤 个人中心</button>
+                <div id="user-auth-section">
+                    <button class="btn-outline" id="login-btn" onclick="openAuthModal()">登录/注册</button>
+                    <div id="user-info" style="display: none;">
+                        <span id="user-email"></span>
+                        <button class="btn-text" onclick="handleLogout()">注销</button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- 登录注册模态框 -->
+        <div id="auth-modal" class="modal">
+            <div class="modal-content auth-modal-content">
+                <span class="close" onclick="closeModal('auth-modal')">&times;</span>
+                <div class="auth-tabs">
+                    <button class="auth-tab active" onclick="switchAuthTab('login')">登录</button>
+                    <button class="auth-tab" onclick="switchAuthTab('register')">注册</button>
+                </div>
+                
+                <!-- 登录表单 -->
+                <form id="login-form" class="auth-form" onsubmit="handleLogin(event)">
+                    <div class="form-group">
+                        <label>邮箱</label>
+                        <input type="email" id="login-email" required placeholder="your@email.com">
+                    </div>
+                    <div class="form-group">
+                        <label>密码</label>
+                        <input type="password" id="login-password" required placeholder="请输入密码">
+                    </div>
+                    <button type="submit" class="btn-primary btn-block">登录</button>
+                </form>
+
+                <!-- 注册表单 -->
+                <form id="register-form" class="auth-form" style="display: none;" onsubmit="handleRegister(event)">
+                    <div class="form-group">
+                        <label>邮箱</label>
+                        <input type="email" id="register-email" required placeholder="your@email.com">
+                    </div>
+                    <div class="form-group">
+                        <label>密码</label>
+                        <input type="password" id="register-password" required placeholder="至少6位密码">
+                    </div>
+                    <div class="form-group">
+                        <label>确认密码</label>
+                        <input type="password" id="register-confirm-password" required placeholder="请再次输入密码">
+                    </div>
+                    <button type="submit" class="btn-primary btn-block">注册账号</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- 主要内容区域 -->
+        <main class="main-content">
+            <!-- 3D小人展示区 -->
+            <section class="avatar-section">
+                <h2>我的虚拟试衣间</h2>
+                <div class="avatar-container">
+                    <div id="avatar-display" class="avatar-display">
+                        <div id="avatar-3d-container"></div>
+                        <div id="avatar-2d-fallback" class="avatar-placeholder">
+                            <span>👤</span>
+                            <p>3D虚拟试衣间</p>
+                            <div class="body-stats">
+                                <small>身高: <span id="display-height">170</span>cm</small><br>
+                                <small>体重: <span id="display-weight">60</span>kg</small>
+                            </div>
+                        </div>
+                        <div class="avatar-hint">鼠标拖拽旋转 • 滚轮缩放</div>
+                    </div>
+                    <div class="avatar-controls">
+                        <button onclick="openBodySettings()">调整身材</button>
+                        <button onclick="randomOutfit()">随机搭配</button>
+                        <button onclick="saveOutfit()">保存搭配</button>
+                        <button class="btn-undress" onclick="undressAll()">一键脱下</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 衣服管理区 -->
+            <section class="wardrobe-section">
+                <div class="section-header">
+                    <h2>衣服管理</h2>
+                    <div class="wardrobe-actions">
+                        <button onclick="uploadClothes()">📷 拍照上传</button>
+                        <button onclick="importClothes()">📁 导入图片</button>
+                        <button onclick="browseCatalog()">🛍️ 浏览商城</button>
+                    </div>
+                </div>
+
+                <!-- 分类筛选器 -->
+                <div class="category-filter" id="category-filter">
+                    <button class="filter-btn active" data-category="all" onclick="filterClothes('all')">全部</button>
+                    <button class="filter-btn" data-category="top" onclick="filterClothes('top')">上衣</button>
+                    <button class="filter-btn" data-category="bottom" onclick="filterClothes('bottom')">下装</button>
+                    <button class="filter-btn" data-category="dress" onclick="filterClothes('dress')">连衣裙</button>
+                    <button class="filter-btn" data-category="outer" onclick="filterClothes('outer')">外套</button>
+                    <button class="filter-btn" data-category="shoes" onclick="filterClothes('shoes')">鞋子</button>
+                    <button class="filter-btn" data-category="accessory" onclick="filterClothes('accessory')">配饰</button>
+                </div>
+
+                <div class="clothes-grid" id="clothes-grid">
+                    <!-- 衣服网格将在这里动态生成 -->
+                    <div class="clothes-item add-new" onclick="uploadClothes()">
+                        <div class="add-icon">+</div>
+                        <p>添加新衣服</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 搭配方案区 -->
+            <section class="outfits-section" id="outfits-section" style="display:none;">
+                <div class="section-header">
+                    <h2>我的搭配方案</h2>
+                    <button class="btn-text" onclick="showWardrobe()">← 返回试衣间</button>
+                </div>
+                <div class="outfits-grid" id="outfits-grid">
+                    <!-- 搭配方案将在这里显示 -->
+                </div>
+            </section>
+
+            <!-- 达人穿搭推荐区 -->
+            <section class="recommendations-section" id="recommendations-section" style="display:none;">
+                <div class="section-header">
+                    <h2>🌟 达人穿搭推荐</h2>
+                    <div class="header-links">
+                        <button class="btn-text" onclick="browseCatalog()">🛍️ 去商城逛逛</button>
+                        <button class="btn-text" onclick="showWardrobe()">👗 返回我的衣橱</button>
+                    </div>
+                </div>
+                <div class="style-filters">
+                    <button class="style-btn active" onclick="filterStyle('all')">全部</button>
+                    <button class="style-btn" onclick="filterStyle('chic')">韩系Chic</button>
+                    <button class="style-btn" onclick="filterStyle('dopamine')">多巴胺</button>
+                    <button class="style-btn" onclick="filterStyle('elegant')">优雅风</button>
+                </div>
+                <div class="recommendations-grid" id="recommendations-grid">
+                    <!-- 推荐内容将在这里动态生成 -->
+                </div>
+            </section>
+
+            <!-- 个人中心页面 -->
+            <section class="personal-center-section" id="personal-center-section" style="display:none;">
+                <div class="section-header">
+                    <h2>👤 个人中心</h2>
+                    <button class="btn-text" onclick="showWardrobe()">← 返回试衣间</button>
+                </div>
+                
+                <div class="profile-container">
+                    <!-- 1. 顶部用户信息卡片 -->
+                    <div class="profile-card user-main-card">
+                        <div class="avatar-wrapper">
+                            <div class="avatar-circle">👤</div>
+                        </div>
+                        <div class="user-info-text">
+                            <h3 id="profile-nickname">可爱衣橱主</h3>
+                            <p id="profile-status">本地模式 (登录以同步数据)</p>
+                        </div>
+                    </div>
+
+                    <div class="profile-grid">
+                        <!-- 2. 身材数据模块 -->
+                        <div class="profile-card body-data-card">
+                            <h4>📏 我的身材数据 <small>(点击编辑)</small></h4>
+                            <div class="data-items" id="body-data-display">
+                                <!-- 由JS动态填充 -->
+                            </div>
+                            <div class="style-preference">
+                                <h5>✨ 穿搭风格偏好</h5>
+                                <div id="style-tags" class="style-tags">
+                                    <span class="style-tag" onclick="editStylePreference()">+ 添加风格</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 3. 衣橱数据统计模块 -->
+                        <div class="profile-card stats-card">
+                            <h4>📊 衣橱数据统计</h4>
+                            <div class="stats-overview">
+                                <div class="stat-box">
+                                    <span class="stat-num" id="total-clothes-count">0</span>
+                                    <span class="stat-label">总衣物</span>
+                                </div>
+                                <div class="stat-box">
+                                    <span class="stat-num" id="saved-outfits-count">0</span>
+                                    <span class="stat-label">搭配方案</span>
+                                </div>
+                            </div>
+                            <div class="category-stats-list" id="category-stats-list">
+                                <!-- 由JS动态填充 -->
+                            </div>
+                            <div class="idle-alert" id="idle-alert">
+                                <span>🌸 闲置提醒：有 <strong id="idle-count">0</strong> 件宝贝很久没穿啦，快去试试吧！</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 4. 底部功能区 -->
+                    <div class="profile-footer">
+                        <div class="footer-btns">
+                            <button class="btn-outline" onclick="exportData()">💾 数据备份/导出</button>
+                            <button class="btn-outline" onclick="openPreferences()">⚙️ 偏好设置</button>
+                            <button class="btn-danger-outline" onclick="handleLogout()">🚪 退出登录</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 今日穿搭推荐页面 -->
+            <section class="today-outfit-section" id="today-outfit-section" style="display:none;">
+                <div class="section-header">
+                    <h2>🌤️ 今日穿搭推荐</h2>
+                    <button class="btn-text" onclick="showWardrobe()">← 返回试衣间</button>
+                </div>
+
+                <div class="weather-container">
+                    <!-- 1. 天气模块卡片 -->
+                    <div id="weather-card" class="weather-card loading-state">
+                        <div class="weather-info-main">
+                            <div class="weather-temp-group">
+                                <span id="current-temp" class="temp-val">--</span><span class="temp-unit">°C</span>
+                            </div>
+                            <div class="weather-icon-group">
+                                <img id="weather-icon" src="" alt="天气图标" style="display:none;">
+                                <span id="weather-desc" class="weather-desc">正在获取天气...</span>
+                            </div>
+                        </div>
+                        <div class="weather-details">
+                            <span id="city-name">定位中...</span>
+                            <span id="weather-humidity">湿度: --%</span>
+                            <span id="weather-wind">风速: --m/s</span>
+                        </div>
+                    </div>
+
+                    <!-- 2. AI 穿搭文案 -->
+                    <div class="ai-recommendation-text">
+                        <p id="ai-outfit-text">正在为您分析今日天气，请稍候... ✨</p>
+                    </div>
+
+                    <!-- 3. 图文推荐卡片区 -->
+                    <div class="recommendation-cards-grid" id="outfit-cards-grid">
+                        <!-- 由 JS 动态填充 -->
+                    </div>
+
+                    <!-- 4. 未来预报入口 -->
+                    <div class="forecast-entry">
+                        <button class="btn-outline btn-forecast" onclick="toggleForecast()">查看未来 3 天穿搭建议 📅</button>
+                        <div id="forecast-content" class="forecast-content" style="display:none;">
+                            <!-- 由 JS 动态填充 -->
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 穿搭日历页面 -->
+            <section class="calendar-section" id="calendar-section" style="display:none;">
+                <div class="section-header">
+                    <h2>📅 穿搭日历</h2>
+                    <button class="btn-text" onclick="showWardrobe()">← 返回试衣间</button>
+                </div>
+
+                <!-- 顶部今日快捷入口 -->
+                <div class="quick-log-card">
+                    <div class="quick-log-info">
+                        <h3>记录今日穿搭 👗</h3>
+                        <p id="today-date-text">2024年4月21日</p>
+                    </div>
+                    <button class="btn-primary" onclick="openOutfitLogModal(new Date())">去记录</button>
+                </div>
+
+                <div class="calendar-container">
+                    <div class="calendar-header">
+                        <button class="btn-icon" onclick="changeMonth(-1)">◀</button>
+                        <h3 id="current-month-display">2024年4月</h3>
+                        <button class="btn-icon" onclick="changeMonth(1)">▶</button>
+                    </div>
+                    <div class="calendar-weekdays">
+                        <span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
+                    </div>
+                    <div id="calendar-days" class="calendar-days">
+                        <!-- 由 JS 动态填充 -->
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- 穿搭记录模态框 -->
+        <div id="outfit-log-modal" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="closeModal('outfit-log-modal')">&times;</span>
+                <h3 id="log-modal-title">记录穿搭</h3>
+                <div class="log-form">
+                    <div class="form-group">
+                        <label>穿搭风格</label>
+                        <div class="style-options-chips">
+                            <span class="chip" onclick="selectStyleChip(this)">通勤</span>
+                            <span class="chip" onclick="selectStyleChip(this)">休闲</span>
+                            <span class="chip" onclick="selectStyleChip(this)">约会</span>
+                            <span class="chip" onclick="selectStyleChip(this)">运动</span>
+                            <span class="chip" onclick="selectStyleChip(this)">优雅</span>
+                            <span class="chip" onclick="selectStyleChip(this)">街头</span>
+                        </div>
+                        <input type="hidden" id="selected-style-input">
+                    </div>
+                    <div class="form-group">
+                        <label>穿搭照片</label>
+                        <div class="log-image-upload" onclick="triggerLogImageUpload()">
+                            <div id="log-image-preview" class="log-image-preview">
+                                <span>📸 点击上传今日美照</span>
+                            </div>
+                            <input type="file" id="log-image-input" accept="image/*" style="display:none;" onchange="handleLogImageSelect(event)">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>穿搭心得 / 备注</label>
+                        <textarea id="log-note-input" placeholder="今天穿这一套心情怎么样？" rows="3"></textarea>
+                    </div>
+                    <button class="btn-primary btn-block" onclick="saveOutfitLog()">保存记录</button>
+                    <button id="delete-log-btn" class="btn-text btn-block" style="color: #ff6b6b; display: none;" onclick="deleteOutfitLog()">删除记录</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 身材设置模态框 -->
+        <div id="body-settings-modal" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="closeModal('body-settings-modal')">&times;</span>
+                <h3>身材参数设置</h3>
+                <div class="body-parameters">
+                    <div class="param-group">
+                        <label>身高 (cm):</label>
+                        <input type="range" id="height" min="150" max="190" value="170" oninput="updateProfileFromUI()">
+                        <span id="height-value">170</span>
+                    </div>
+                    <div class="param-group">
+                        <label>体重 (kg):</label>
+                        <input type="range" id="weight" min="45" max="90" value="60" oninput="updateProfileFromUI()">
+                        <span id="weight-value">60</span>
+                    </div>
+                    <div class="param-group">
+                        <label>肩宽 (cm):</label>
+                        <input type="range" id="shoulder" min="35" max="50" value="42" oninput="updateProfileFromUI()">
+                        <span id="shoulder-value">42</span>
+                    </div>
+                    <div class="param-group">
+                        <label>胸围 (cm):</label>
+                        <input type="range" id="chest" min="80" max="110" value="90" oninput="updateProfileFromUI()">
+                        <span id="chest-value">90</span>
+                    </div>
+                    <div class="param-group">
+                        <label>腰围 (cm):</label>
+                        <input type="range" id="waist" min="60" max="90" value="70" oninput="updateProfileFromUI()">
+                        <span id="waist-value">70</span>
+                    </div>
+                    <div class="param-group">
+                        <label>臀围 (cm):</label>
+                        <input type="range" id="hip" min="80" max="110" value="95" oninput="updateProfileFromUI()">
+                        <span id="hip-value">95</span>
+                    </div>
+                    <div class="control-group">
+                        <label>肤色</label>
+                        <input type="color" id="skinColor" value="#ffefd5" oninput="updateProfileFromUI()">
+                    </div>
+                    <div class="control-group">
+                        <label>发色</label>
+                        <input type="color" id="hairColor" value="#5c3a21" oninput="updateProfileFromUI()">
+                    </div>
+                    <div class="control-group">
+                        <label>发型</label>
+                        <select id="hairStyle" onchange="updateProfileFromUI()">
+                            <option value="pony">双马尾</option>
+                            <option value="short">可爱短发</option>
+                            <option value="long">气质长发</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="settings-actions">
+                    <button class="btn-primary" onclick="saveBodySettings()">保存设置</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 文件上传模态框 -->
+        <div id="upload-modal" class="modal">
+            <div class="modal-content">
+                <span class="close" onclick="closeModal('upload-modal')">&times;</span>
+                <h3>添加新衣服</h3>
+                <div class="upload-options">
+                    <div class="upload-option" onclick="takePhoto()">
+                        <span>📷</span>
+                        <p>拍照上传</p>
+                    </div>
+                    <div class="upload-option" onclick="selectFile()">
+                        <span>📁</span>
+                        <p>选择文件</p>
+                    </div>
+                </div>
+                <input type="file" id="file-input" accept="image/*" style="display:none;" onchange="handleFileSelect(event)">
+                <div id="image-preview" class="image-preview">
+                    <div class="preview-placeholder">图片预览</div>
+                </div>
+                <div class="clothes-info">
+                    <div class="input-group">
+                        <label for="clothes-type">衣物类型</label>
+                        <select id="clothes-type">
+                            <option value="top">上衣</option>
+                            <option value="bottom">下装</option>
+                            <option value="dress">连衣裙</option>
+                            <option value="outer">外套</option>
+                            <option value="shoes">鞋子</option>
+                            <option value="accessory">配饰</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="clothes-length">长度/款式</label>
+                        <select id="clothes-length">
+                            <option value="long">长款/标准</option>
+                            <option value="short">短款/迷你</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="clothes-name">衣物名称</label>
+                        <input type="text" id="clothes-name" placeholder="例如：白色纯棉T恤">
+                    </div>
+                    <div class="input-group">
+                        <label for="clothes-color">主要颜色</label>
+                        <select id="clothes-color">
+                            <option value="#FFFFFF">白色</option>
+                            <option value="#000000">黑色</option>
+                            <option value="#808080">灰色</option>
+                            <option value="#FF0000">红色</option>
+                            <option value="#0000FF">蓝色</option>
+                            <option value="#008000">绿色</option>
+                            <option value="#FFFF00">黄色</option>
+                            <option value="#FFA500">橙色</option>
+                            <option value="#800080">紫色</option>
+                            <option value="#FFC0CB">粉色</option>
+                            <option value="#A52A2A">棕色</option>
+                        </select>
+                    </div>
+                </div>
+                <button class="btn-primary" onclick="saveClothes()">保存衣服</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="3d-avatar.js"></script>
+    <script src="clothing-models.js"></script>
+    <script src="taobao-integration.js"></script>
+    <script src="supabase-config.js"></script>
+    <script src="supabase-client.js"></script>
+    <script src="script.js?v=1.0.1"></script>
+</body>
+</html>

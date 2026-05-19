@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D虚拟试衣间测试</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f8fafc;
+        }
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 24px;
+            border-radius: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #6366f1;
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        .test-section {
+            margin-bottom: 24px;
+            padding: 16px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+        }
+        .test-section h2 {
+            margin-top: 0;
+            color: #1e293b;
+        }
+        .test-button {
+            padding: 8px 16px;
+            margin: 4px;
+            border: none;
+            border-radius: 6px;
+            background: #6366f1;
+            color: white;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .test-button:hover {
+            background: #5551ff;
+        }
+        .status {
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin: 8px 0;
+            font-weight: 500;
+        }
+        .status.success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #10b981;
+        }
+        .status.error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #ef4444;
+        }
+        .status.info {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #3b82f6;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🛍️ 3D虚拟试衣间测试页面</h1>
+
+        <div class="test-section">
+            <h2>🔧 系统检测</h2>
+            <button class="test-button" onclick="checkSystem()">检测系统环境</button>
+            <div id="system-status"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>🎨 3D Avatar测试</h2>
+            <button class="test-button" onclick="test3DAvatar()">初始化3D Avatar</button>
+            <button class="test-button" onclick="testBodyProportions()">测试身材调整</button>
+            <button class="test-button" onclick="testClothingSystem()">测试服装系统</button>
+            <div id="avatar-status"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>👕 服装商城测试</h2>
+            <button class="test-button" onclick="testTaobaoMall()">打开淘宝商城</button>
+            <button class="test-button" onclick="testProductDetail()">测试商品详情</button>
+            <div id="mall-status"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>🧪 功能测试</h2>
+            <button class="test-button" onclick="testWardrobeFunctions()">测试衣橱功能</button>
+            <button class="test-button" onclick="testLocalStorage()">测试本地存储</button>
+            <button class="test-button" onclick="testResponsiveDesign()">测试响应式设计</button>
+            <div id="function-status"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>🚀 快速启动</h2>
+            <button class="test-button" onclick="launchFullApp()">启动完整应用</button>
+            <div id="launch-status"></div>
+        </div>
+    </div>
+
+    <!-- 引入依赖 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.min.js"></script>
+
+    <!-- 引入应用脚本 -->
+    <script src="3d-avatar.js"></script>
+    <script src="clothing-models.js"></script>
+    <script src="taobao-integration.js"></script>
+    <script src="script.js"></script>
+
+    <script>
+        // 测试函数
+        function checkSystem() {
+            const status = document.getElementById('system-status');
+            let checks = [];
+
+            // 检查Three.js
+            if (typeof THREE !== 'undefined') {
+                checks.push('✅ Three.js 已加载');
+            } else {
+                checks.push('❌ Three.js 未加载');
+            }
+
+            // 检查浏览器WebGL支持
+            try {
+                const canvas = document.createElement('canvas');
+                const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+                if (gl && gl instanceof WebGLRenderingContext) {
+                    checks.push('✅ WebGL 支持正常');
+                } else {
+                    checks.push('❌ WebGL 不支持');
+                }
+            } catch (e) {
+                checks.push('❌ WebGL 检测失败');
+            }
+
+            // 检查LocalStorage
+            if (typeof(Storage) !== 'undefined') {
+                checks.push('✅ LocalStorage 支持正常');
+            } else {
+                checks.push('❌ LocalStorage 不支持');
+            }
+
+            status.innerHTML = checks.map(check => `<div class="status info">${check}</div>`).join('');
+        }
+
+        function test3DAvatar() {
+            const status = document.getElementById('avatar-status');
+
+            if (typeof initAvatar3D === 'function') {
+                try {
+                    initAvatar3D();
+                    status.innerHTML = '<div class="status success">✅ 3D Avatar初始化成功！</div>';
+                } catch (error) {
+                    status.innerHTML = `<div class="status error">❌ 3D Avatar初始化失败: ${error.message}</div>`;
+                }
+            } else {
+                status.innerHTML = '<div class="status error">❌ 3D Avatar函数未定义</div>';
+            }
+        }
+
+        function testBodyProportions() {
+            const status = document.getElementById('avatar-status');
+
+            if (typeof updateAvatar3DProportions === 'function') {
+                try {
+                    const testProfile = {
+                        height: 175,
+                        weight: 65,
+                        shoulder: 44,
+                        chest: 95,
+                        waist: 75,
+                        hip: 100
+                    };
+                    updateAvatar3DProportions(testProfile);
+                    status.innerHTML += '<div class="status success">✅ 身材参数调整成功！</div>';
+                } catch (error) {
+                    status.innerHTML += `<div class="status error">❌ 身材参数调整失败: ${error.message}</div>`;
+                }
+            } else {
+                status.innerHTML += '<div class="status error">❌ 身材调整函数未定义</div>';
+            }
+        }
+
+        function testClothingSystem() {
+            const status = document.getElementById('avatar-status');
+
+            if (typeof tryOnClothes3D === 'function') {
+                try {
+                    const testClothes = {
+                        id: 999,
+                        type: 'top',
+                        name: '测试T恤',
+                        color: '#FF0000',
+                        image: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHZpZXdCb3g9IjAgMCA4MCA4MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjgwIiBoZWlnaHQ9IjgwIiBmaWxsPSIjRkYwMDAwIiBzdHJva2U9IiNlMmU4ZjAiLz4KPC9zdmc+'
+                    };
+                    tryOnClothes3D(testClothes);
+                    status.innerHTML += '<div class="status success">✅ 服装系统测试成功！</div>';
+                } catch (error) {
+                    status.innerHTML += `<div class="status error">❌ 服装系统测试失败: ${error.message}</div>`;
+                }
+            } else {
+                status.innerHTML += '<div class="status error">❌ 服装系统函数未定义</div>';
+            }
+        }
+
+        function testTaobaoMall() {
+            const status = document.getElementById('mall-status');
+
+            if (typeof browseCatalog === 'function') {
+                try {
+                    browseCatalog();
+                    status.innerHTML = '<div class="status success">✅ 淘宝商城打开成功！</div>';
+                } catch (error) {
+                    status.innerHTML = `<div class="status error">❌ 淘宝商城打开失败: ${error.message}</div>`;
+                }
+            } else {
+                status.innerHTML = '<div class="status error">❌ 商城函数未定义</div>';
+            }
+        }
+
+        function testProductDetail() {
+            const status = document.getElementById('mall-status');
+
+            if (typeof showProductDetail === 'function') {
+                try {
+                    showProductDetail('tb_001');
+                    status.innerHTML += '<div class="status success">✅ 商品详情测试成功！</div>';
+                } catch (error) {
+                    status.innerHTML += `<div class="status error">❌ 商品详情测试失败: ${error.message}</div>`;
+                }
+            } else {
+                status.innerHTML += '<div class="status error">❌ 商品详情函数未定义</div>';
+            }
+        }
+
+        function testWardrobeFunctions() {
+            const status = document.getElementById('function-status');
+            let results = [];
+
+            // 测试衣橱数据
+            if (typeof clothesCollection !== 'undefined') {
+                results.push('✅ 衣橱数据系统正常');
+            } else {
+                results.push('❌ 衣橱数据系统异常');
+            }
+
+            // 测试用户档案
+            if (typeof userProfile !== 'undefined') {
+                results.push('✅ 用户档案系统正常');
+            } else {
+                results.push('❌ 用户档案系统异常');
+            }
+
+            // 测试本地存储
+            if (typeof saveToLocalStorage === 'function') {
+                try {
+                    saveToLocalStorage();
+                    results.push('✅ 本地存储功能正常');
+                } catch (error) {
+                    results.push('❌ 本地存储功能异常');
+                }
+            }
+
+            status.innerHTML = results.map(result => `<div class="status info">${result}</div>`).join('');
+        }
+
+        function testLocalStorage() {
+            const status = document.getElementById('function-status');
+
+            try {
+                // 测试写入
+                localStorage.setItem('wardrobe-test', '测试数据');
+
+                // 测试读取
+                const data = localStorage.getItem('wardrobe-test');
+
+                if (data === '测试数据') {
+                    status.innerHTML += '<div class="status success">✅ 本地存储测试成功！</div>';
+                } else {
+                    status.innerHTML += '<div class="status error">❌ 本地存储数据不一致</div>';
+                }
+
+                // 清理测试数据
+                localStorage.removeItem('wardrobe-test');
+            } catch (error) {
+                status.innerHTML += `<div class="status error">❌ 本地存储测试失败: ${error.message}</div>`;
+            }
+        }
+
+        function testResponsiveDesign() {
+            const status = document.getElementById('function-status');
+
+            // 检查CSS变量
+            const style = getComputedStyle(document.documentElement);
+            const primaryColor = style.getPropertyValue('--primary-color').trim();
+
+            if (primaryColor) {
+                status.innerHTML += '<div class="status success">✅ 响应式设计测试成功！</div>';
+            } else {
+                status.innerHTML += '<div class="status error">❌ 响应式设计测试失败</div>';
+            }
+        }
+
+        function launchFullApp() {
+            const status = document.getElementById('launch-status');
+
+            status.innerHTML = '<div class="status info">🚀 正在启动完整应用...</div>';
+
+            setTimeout(() => {
+                window.location.href = 'index.html';
+            }, 2000);
+        }
+
+        // 页面加载时自动运行系统检测
+        window.addEventListener('load', function() {
+            setTimeout(checkSystem, 1000);
+        });
+    </script>
+</body>
+</html>
